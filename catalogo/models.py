@@ -9,13 +9,10 @@ class Exemplar(models.Model):
 
     def as_json(self):
         return dict(
-            input_id=self.id, 
+            id=self.id, 
             titulo=self.titulo,
             autor=self.autor, 
             exemplar=self.exemplar,
             area=self.area,
             reservado=self.reservado)
-    
-    def __str__(self):
-        return "self.full_name"
     

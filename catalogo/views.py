@@ -2,6 +2,8 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from .models import Exemplar
 from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.core.serializers import serialize
 import json
 
 # Create your views here.
@@ -34,9 +36,11 @@ buscar por um Exemplar pelo seu título.
 # GET /catalogo/exemplar/:titulo_exemplar
 def buscaExemplarByNome(request, titulo_exemplar):
     try:
-        exemplares = Exemplar.objects.filter(titulo__contains=titulo_exemplar)
-        lista_exemplares = convertQueryResultToJsonList(exemplares)
-        return HttpResponse(lista_exemplares)
+        exemplares = Exemplar.objects.filter(titulo__contains=titulo_exemplar)[:10]
+        lista_exemplares =list(exemplares.values())
+        # lista_exemplares = convertQueryResultToJsonList(exemplares)
+        # return HttpResponse(lista_exemplares)
+        return JsonResponse(lista_exemplares, safe=False)
     except exemplares.DoesNotExist:
         return HttpResponse("Não há nenhuma exemplar no catálogo com o termo de busca solicitado!")  
 
@@ -49,8 +53,8 @@ def criarExemplar(request):
     try:
         if request.method == 'POST':
             dadosExemplar = json.loads(request.body)
-            print(request.body)
-            print(dadosExemplar)
+            # print(request.body)
+            # print(dadosExemplar)
             novoExemplar = Exemplar(
                 titulo = dadosExemplar['titulo'].upper(),
                 autor = dadosExemplar['autor'].upper(),
@@ -85,27 +89,43 @@ emprestados.
 # GET /catalogo/examplares_emprestados
 def todosExemplaresReservados(request):
     try:
-        exemplares = Exemplar.objects.filter(reservado = True)
-        lista_exemplares = convertQueryResultToJsonList(exemplares)
-        return HttpResponse(lista_exemplares)
+        exemplares = Exemplar.objects.filter(reservado = True).values()
+        # lista_exemplares = convertQueryResultToJsonList(exemplares)
+        lista_exemplares = list(exemplares)
+        return JsonResponse(lista_exemplares, safe=False)
     except Exemplar.DoesNotExist:
         return HttpResponse("Não há nenhum exemplar emprestado no catálogo!")  
 
 # GET /catalogo/exemplar
 def allExemplares(request):
-    # result_list = [exemplar.as_json() for exemplar in Exemplar.objects.order_by('titulo')]
     try:
-        exemplares = Exemplar.objects.order_by('titulo')
-        lista_exemplares = convertQueryResultToJsonList(exemplares)
-        return HttpResponse(lista_exemplares)
-    except exemplares.DoesNotExist:
+        page = request.GET.get('page', )
+        itemsPerPage = request.GET.get('itemsPerPage', 0)
+        sortBy = request.GET.get('sortBy', 'titulo')
+        lingua = request.GET.get('lingua', '')
+        
+        # exemplares = list(Exemplar.objects.order_by('titulo').values())
+        exemplar_list = Exemplar.objects.order_by(sortBy)
+        if lingua != '':
+            exemplar_list = exemplar_list.filter(area=lingua.upper())
+            
+        if page != 0 and itemsPerPage != 0:
+            paginator = Paginator(exemplar_list, itemsPerPage)
+            page = paginator.get_page(page)
+            return JsonResponse({"exemplares":list(page.object_list.values()), 
+                                 "totalItems": exemplar_list.count()} , safe=False)
+        return JsonResponse(list(exemplar_list.values()), safe=False)
+    except Exemplar.DoesNotExist:
         return HttpResponse("Não foi encontrado nenhum exemplar")
     
 # GET /catalogo/exemplar/:exemplar_id
 def exemplarById(request, exemplar_id):
     try:
         exemplar = Exemplar.objects.get(id=exemplar_id)
-        return HttpResponse(exemplar.as_json().__str__())
+        return HttpResponse(json.dumps(exemplar.as_json()), content_type="application/json" )
+        # serializedObj = serialize('json', [ exemplar, ])
+        # # return JsonResponse(serialized_obj, safe=False)
+        # return HttpResponse(serializedObj, content_type="application/json" )
     except exemplar.DoesNotExist:
         return HttpResponse("Não foi encontrado nenhum exemplar")
     
