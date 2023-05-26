@@ -33,13 +33,13 @@ def reservarExemplar(request, exemplar_id):
 RF02 Um usuário ou bibliotecário da biblioteca deve conseguir
 buscar por um Exemplar pelo seu título.
 '''
-# GET /catalogo/exemplar/:titulo_exemplar
-def buscaExemplarByNome(request, titulo_exemplar):
+# GET /catalogo/exemplar/titulo?titulo=""
+def buscaExemplarByNome(request):
     try:
+        titulo_exemplar = request.GET.get('titulo', )
+        print(titulo_exemplar)
         exemplares = Exemplar.objects.filter(titulo__contains=titulo_exemplar)[:10]
         lista_exemplares =list(exemplares.values())
-        # lista_exemplares = convertQueryResultToJsonList(exemplares)
-        # return HttpResponse(lista_exemplares)
         return JsonResponse(lista_exemplares, safe=False)
     except exemplares.DoesNotExist:
         return HttpResponse("Não há nenhuma exemplar no catálogo com o termo de busca solicitado!")  
